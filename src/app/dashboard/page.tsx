@@ -37,7 +37,7 @@ export default async function DashboardPage({
   });
 
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const params = await searchParams;
