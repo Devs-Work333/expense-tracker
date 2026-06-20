@@ -2,6 +2,7 @@ import { getCategories } from "@/actions/category";
 import {
   getTransactions,
   getTransactionSummary,
+  getCategoryAnalytics,
 } from "@/actions/transaction";
 
 export default async function DashboardPage() {
@@ -13,6 +14,9 @@ export default async function DashboardPage() {
 
   const summary =
     await getTransactionSummary();
+
+  const analytics =
+    await getCategoryAnalytics();
 
   return (
     <main className="p-8">
@@ -36,6 +40,11 @@ export default async function DashboardPage() {
 
       <p>
         Saving: {summary.saving}
+      </p>
+
+      <p>
+        Analytics Count:
+        {analytics.length}
       </p>
     </main>
   );
