@@ -1,16 +1,4 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-import { auth } from "@/lib/auth";
-
-import CategoryForm from "@/components/category-form";
-import TransactionForm from "@/components/transaction-form";
-import SummaryCards from "@/components/summary-cards";
-import TransactionList from "@/components/transaction-list";
-import TransactionFilters from "@/components/transaction-filters";
-import CategoryChart from "@/components/category-chart";
-import OverviewChart from "@/components/overview-chart";
-
+import Link from "next/link";
 import { getCategories } from "@/actions/category";
 import {
   getTransactions,
@@ -18,115 +6,145 @@ import {
   getCategoryAnalytics,
 } from "@/actions/transaction";
 
+import SummaryCards from "@/components/summary-cards";
+import TransactionForm from "@/components/transaction-form";
+import TransactionFilters from "@/components/transaction-filters";
+import TransactionsTable from "@/components/transactions-table";
+import CategoryChart from "@/components/category-chart";
+import OverviewChart from "@/components/overview-chart";
+
 type Props = {
   searchParams: Promise<{
     month?: string;
-    type?: string;
+    type?: "INCOME" | "EXPENSE";
+    date?: string;
+    categoryId?: string;
+    sort?: "latest" | "oldest" | "high" | "low";
+    page?: string;
   }>;
 };
 
 export default async function DashboardPage({
   searchParams,
 }: Props) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  // Protect dashboard route
-  if (!session) {
-    redirect("/login");
-  }
-
-  // Next.js 15 async searchParams
   const params = await searchParams;
 
-  const month = params.month;
-  const type = params.type;
+  const page = Number(params.page || 1);
 
-  // Fetch data
   const categories = await getCategories();
 
-  const transactions = await getTransactions(
-    month,
-    type
-  );
+  const transactions = await getTransactions({
+    month: params.month,
+    type: params.type,
+    date: params.date,
+    categoryId: params.categoryId,
+    sort: params.sort,
+    page,
+  });
 
   const summary = await getTransactionSummary(
-    month,
-    type
+    params.month,
+    params.type
   );
 
   const analytics = await getCategoryAnalytics(
-    month
+    params.month
   );
 
   return (
-    <main className="min-h-screen p-6">
-      <div className="mx-auto max-w-5xl space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">
-            Welcome, {session.user.name}
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your expenses, savings and income
-          </p>
-        </div>
+    <main className="space-y-8 p-8">
+      {/* Hero Header */}
+      <section className="rounded-[32px] border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-xl">
+        <p className="text-sm uppercase tracking-[0.25em] text-slate-300">
+          Financial Command Center
+        </p>
 
-        {/* Summary Cards */}
-        <SummaryCards
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+          Welcome back
+        </h1>
+
+        <p className="mt-2 text-slate-300">
+          Manage your money with clarity.
+        </p>
+      </section>
+
+      {/* Summary Cards */}
+      <SummaryCards
+        income={summary.income}
+        expense={summary.expense}
+        saving={summary.saving}
+        balance={summary.balance}
+      />
+
+      {/* Quick Navigation */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <Link
+          href="/categories"
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:shadow-md"
+        >
+          <p className="text-sm font-medium text-slate-500">
+            Manage Categories
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            Add / Edit Categories
+          </h3>
+        </Link>
+
+        <Link
+          href="/recurring"
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:shadow-md"
+        >
+          <p className="text-sm font-medium text-slate-500">
+            Recurring Payments
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            Schedule Transactions
+          </h3>
+        </Link>
+
+        <Link
+          href="/goals"
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:shadow-md"
+        >
+          <p className="text-sm font-medium text-slate-500">
+            Savings Goals
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            Track Wealth Goals
+          </h3>
+        </Link>
+      </section>
+
+      {/* Quick Add Transaction */}
+      <TransactionForm categories={categories} />
+
+      {/* Charts */}
+      <section className="grid gap-6 lg:grid-cols-2">
+        <CategoryChart data={analytics} />
+
+        <OverviewChart
           income={summary.income}
           expense={summary.expense}
           saving={summary.saving}
-          balance={summary.balance}
         />
+      </section>
 
-        {/* Charts */}
-        <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-lg border p-6">
-            <h2 className="mb-4 text-xl font-semibold">
-              Category Breakdown
-            </h2>
+      {/* Filters */}
+      <TransactionFilters categories={categories} />
 
-            <CategoryChart data={analytics} />
-          </div>
+      {/* Transactions */}
+      <TransactionsTable
+        transactions={transactions}
+      />
 
-          <div className="rounded-lg border p-6">
-            <h2 className="mb-4 text-xl font-semibold">
-              Financial Overview
-            </h2>
-
-            <OverviewChart
-              income={summary.income}
-              expense={summary.expense}
-              saving={summary.saving}
-            />
-          </div>
-        </section>
-
-        {/* Category Form */}
-        <section className="rounded-lg border p-6">
-          <CategoryForm />
-        </section>
-
-        {/* Transaction Form */}
-        <section className="rounded-lg border p-6">
-          <TransactionForm categories={categories} />
-        </section>
-
-        {/* Filters */}
-        <section className="rounded-lg border p-6">
-          <TransactionFilters />
-        </section>
-
-        {/* Transactions List */}
-        <section className="rounded-lg border p-6">
-          <h2 className="mb-4 text-xl font-semibold">
-            Transaction History
-          </h2>
-
-          <TransactionList transactions={transactions} />
-        </section>
+      {/* Pagination */}
+      <div className="flex justify-center">
+        <Link
+          href={`/dashboard?page=${page + 1}`}
+          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-medium"
+        >
+          Load next 10
+        </Link>
       </div>
     </main>
   );

@@ -8,8 +8,9 @@ export default function CategoryForm() {
   const [name, setName] = useState("");
   const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
 
- const handleSubmit = async () => {
   const router = useRouter();
+ const handleSubmit = async () => {
+  
   const trimmedName = name.trim();
 
   if (!trimmedName) {

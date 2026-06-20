@@ -1,16 +1,13 @@
-type Transaction = {
-  id: string;
-  amount: number;
-  description: string | null;
-  type: string;
-  date: Date;
-  category: {
-    name: string;
+
+import { Transaction, Category } from "@prisma/client";
+
+type TransactionWithCategory =
+  Transaction & {
+    category: Category;
   };
-};
 
 type Props = {
-  transactions: Transaction[];
+  transactions: TransactionWithCategory[];
 };
 
 export default function TransactionList({
@@ -18,8 +15,8 @@ export default function TransactionList({
 }: Props) {
   if (!transactions.length) {
     return (
-      <div className="rounded border p-4">
-        No transactions yet.
+      <div className="rounded-3xl border border-dashed p-8 text-center text-slate-400">
+        No transactions found.
       </div>
     );
   }
@@ -29,7 +26,7 @@ export default function TransactionList({
       {transactions.map((transaction) => (
         <div
           key={transaction.id}
-          className="rounded border p-4"
+          className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:bg-slate-50 transition"
         >
           <div className="flex justify-between">
             <div>
@@ -37,15 +34,15 @@ export default function TransactionList({
                 {transaction.category.name}
               </h3>
 
-              <p>{transaction.description}</p>
-
-              <small>
-                {new Date(transaction.date).toLocaleDateString()}
-              </small>
+              <p className="text-sm text-slate-500">
+                {transaction.description}
+              </p>
             </div>
 
-            <div>
-              ₹{transaction.amount} ({transaction.type})
+            <div className="text-right">
+              <p className="font-bold">
+                ₹{transaction.amount}
+              </p>
             </div>
           </div>
         </div>
@@ -53,3 +50,4 @@ export default function TransactionList({
     </div>
   );
 }
+

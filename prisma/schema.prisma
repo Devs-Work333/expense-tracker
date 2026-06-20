@@ -65,38 +65,29 @@ model Transaction {
 }
 
 model RecurringTransaction {
-  id String @id @default(cuid())
-
-  title       String
-  amount      Decimal
+  id          String          @id @default(cuid())
+  amount      Float
+  type        TransactionType
   frequency   Frequency
-  nextRunDate DateTime
-  active      Boolean   @default(true)
+  description String?
+  createdAt   DateTime        @default(now())
 
   userId     String
   categoryId String
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model SavingsGoal {
-  id String @id @default(cuid())
-
-  title         String
-  targetAmount  Decimal
-  currentAmount Decimal   @default(0)
-  targetDate    DateTime?
+  id        String   @id @default(cuid())
+  title     String
+  target    Float
+  current   Float    @default(0)
+  createdAt DateTime @default(now())
 
   userId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {

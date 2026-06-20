@@ -7,7 +7,7 @@ import { TransactionType } from "@prisma/client";
 
 export async function createTransaction(
   amount: number,
-  type: TransactionType,
+  type: "INCOME" | "EXPENSE",
   categoryId: string,
   description?: string
 ) {
@@ -19,14 +19,6 @@ export async function createTransaction(
     throw new Error("Unauthorized");
   }
 
-  if (!amount || amount <= 0) {
-    throw new Error("Amount must be greater than 0");
-  }
-
-  if (!categoryId.trim()) {
-    throw new Error("Category is required");
-  }
-
   return prisma.transaction.create({
     data: {
       amount,
@@ -34,14 +26,26 @@ export async function createTransaction(
       categoryId,
       description: description?.trim(),
       userId: session.user.id,
+      date: new Date(),
     },
   });
 }
 
-export async function getTransactions(
-  month?: string,
-  type?: string
-) {
+export async function getTransactions({
+  month,
+  type,
+  date,
+  categoryId,
+  sort = "latest",
+  page = 1,
+}: {
+  month?: string;
+  type?: TransactionType;
+  date?: string;
+  categoryId?: string;
+  sort?: "latest" | "oldest" | "high" | "low";
+  page?: number;
+} = {}) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -50,86 +54,140 @@ export async function getTransactions(
     throw new Error("Unauthorized");
   }
 
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-
-  if (month) {
-    startDate = new Date(`${month}-01`);
-    endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1);
-  }
+  const orderBy =
+    sort === "latest"
+      ? { date: "desc" as const }
+      : sort === "oldest"
+      ? { date: "asc" as const }
+      : sort === "high"
+      ? { amount: "desc" as const }
+      : { amount: "asc" as const };
 
   return prisma.transaction.findMany({
     where: {
       userId: session.user.id,
-      ...(type && {
-        type: type as any,
-      }),
+
       ...(month && {
         date: {
-          gte: startDate,
-          lt: endDate,
+          gte: new Date(`${month}-01`),
+          lte: new Date(`${month}-31`),
         },
       }),
+
+      ...(type && {
+        type,
+      }),
+
+      ...(date && {
+        date: {
+          gte: new Date(date),
+          lte: new Date(
+            new Date(date).setHours(
+              23,
+              59,
+              59
+            )
+          ),
+        },
+      }),
+
+      ...(categoryId && {
+        categoryId,
+      }),
     },
+
     include: {
       category: true,
     },
-    orderBy: {
-      date: "desc",
-    },
+
+    orderBy,
+
+    take: 10,
+    skip: (page - 1) * 10,
   });
 }
 
 export async function getTransactionSummary(
   month?: string,
-  type?: string
+  type?: TransactionType
 ) {
-  const transactions = await getTransactions(month, type);
+  const transactions =
+    await getTransactions({
+      month,
+      type,
+    });
 
   const income = transactions
-    .filter((t) => t.type === "INCOME")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(
+      (transaction) =>
+        transaction.type === "INCOME"
+    )
+    .reduce(
+      (sum, transaction) =>
+        sum + Number(transaction.amount),
+      0
+    );
 
   const expense = transactions
-    .filter((t) => t.type === "EXPENSE")
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(
+      (transaction) =>
+        transaction.type === "EXPENSE"
+    )
+    .reduce(
+      (sum, transaction) =>
+        sum + Number(transaction.amount),
+      0
+    );
 
-  const saving = transactions
-    .filter((t) => t.type === "SAVING")
-    .reduce((sum, t) => sum + t.amount, 0);
 
-  const balance = income - expense - saving;
+ const saving = 0;
+ const balance = income - expense;
 
-  return {
-    income,
-    expense,
-    saving,
-    balance,
-  };
+return {
+  income,
+  expense,
+  balance,saving
+};
 }
 
 export async function getCategoryAnalytics(
   month?: string
 ) {
-  const transactions = await getTransactions(month);
+  const transactions =
+    await getTransactions({
+      month,
+    });
 
-  const grouped = transactions.reduce((acc, tx) => {
-    const key = tx.category.name;
+  const categoryMap = transactions.reduce(
+    (acc, transaction) => {
+      const name =
+        transaction.category.name;
 
-    if (!acc[key]) {
-      acc[key] = 0;
-    }
+      acc[name] =
+        (acc[name] || 0) +
+        Number(transaction.amount);
 
-    acc[key] += tx.amount;
-
-    return acc;
-  }, {} as Record<string, number>);
-
-  return Object.entries(grouped).map(
-    ([name, amount]) => ({
-      name,
-      amount,
-    })
+      return acc;
+    },
+    {} as Record<string, number>
   );
+
+  const total = Object.values(
+    categoryMap
+  ).reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  return Object.entries(
+    categoryMap
+  ).map(([category, amount]) => ({
+    category,
+    amount,
+    percentage: total
+      ? Math.round(
+          (amount / total) * 100
+        )
+      : 0,
+  }));
 }
