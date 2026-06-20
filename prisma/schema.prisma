@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DIRECT_URL")
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+  SAVING
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions              Session[]
+  accounts              Account[]
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+  savingsGoals          SavingsGoal[]
+  categories            Category[]
+}
+
+model Category {
+  id        String          @id @default(cuid())
+  name      String
+  type      TransactionType
+  userId    String
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  @@unique([name, type, userId])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Float
+  description String?
+  type        TransactionType
+  date        DateTime        @default(now())
+  userId      String
+  categoryId  String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+}
+
+model RecurringTransaction {
+  id String @id @default(cuid())
+
+  title       String
+  amount      Decimal
+  frequency   Frequency
+  nextRunDate DateTime
+  active      Boolean   @default(true)
+
+  userId     String
+  categoryId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SavingsGoal {
+  id String @id @default(cuid())
+
+  title         String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0)
+  targetDate    DateTime?
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
