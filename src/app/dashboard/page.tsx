@@ -1,18 +1,12 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { getCategories } from "@/actions/category";
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const categories = await getCategories();
 
   return (
     <main className="p-8">
-      <h1>Session Debug</h1>
-
-      <pre>
-        {JSON.stringify(session, null, 2)}
-      </pre>
+      <h1>Dashboard</h1>
+      <p>Categories: {categories.length}</p>
     </main>
   );
 }
