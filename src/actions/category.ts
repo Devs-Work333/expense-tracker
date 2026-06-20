@@ -50,7 +50,7 @@ export async function getCategories() {
   });
 
   if (!session) {
-    throw new Error("Unauthorized");
+    return [];
   }
 
   return prisma.category.findMany({
