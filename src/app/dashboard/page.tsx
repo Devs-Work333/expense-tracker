@@ -1,5 +1,8 @@
 import { getCategories } from "@/actions/category";
-import { getTransactions } from "@/actions/transaction";
+import {
+  getTransactions,
+  getTransactionSummary,
+} from "@/actions/transaction";
 
 export default async function DashboardPage() {
   const categories = await getCategories();
@@ -7,6 +10,9 @@ export default async function DashboardPage() {
   const transactions = await getTransactions({
     page: 1,
   });
+
+  const summary =
+    await getTransactionSummary();
 
   return (
     <main className="p-8">
@@ -18,6 +24,18 @@ export default async function DashboardPage() {
 
       <p>
         Transactions: {transactions.length}
+      </p>
+
+      <p>
+        Income: {summary.income}
+      </p>
+
+      <p>
+        Expense: {summary.expense}
+      </p>
+
+      <p>
+        Saving: {summary.saving}
       </p>
     </main>
   );
